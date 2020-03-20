@@ -1,8 +1,0 @@
-prefix=/root/ros_ws/devel
-
-Name: landmark_track
-Description: Description of landmark_track
-Version: 0.0.0
-Cflags: -I/root/ros_ws/src/gtsam-in-ros/include
-Libs: -L/root/ros_ws/devel/lib 
-Requires: 

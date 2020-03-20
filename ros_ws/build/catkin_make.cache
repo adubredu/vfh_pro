@@ -1,2 +1,0 @@
-gtsam_tutorials:local_planner:rosbot_description:rosbot_gazebo:rosbot_navigation:sim_envs
--DCATKIN_DEVEL_PREFIX=/root/ros_ws/devel -DCMAKE_INSTALL_PREFIX=/root/ros_ws/install -G Unix Makefiles
