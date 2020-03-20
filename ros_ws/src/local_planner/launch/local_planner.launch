@@ -1,0 +1,5 @@
+<launch>
+	<node pkg='local_planner' type='local_planner' name='local_planner' output='screen'/>
+	<node pkg='local_planner' type='path_follower' name='path_follower' output='screen'/>
+
+</launch>

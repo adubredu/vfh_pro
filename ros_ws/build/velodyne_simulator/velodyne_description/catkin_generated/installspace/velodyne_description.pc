@@ -1,0 +1,8 @@
+prefix=/root/ros_ws/install
+
+Name: velodyne_description
+Description: Description of velodyne_description
+Version: 1.0.6
+Cflags: 
+Libs: -L/root/ros_ws/install/lib 
+Requires: 

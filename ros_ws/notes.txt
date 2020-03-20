@@ -1,0 +1,19 @@
+Launching 
+	roslaunch sim_envs kitchen.launch
+starts up the gazebo kitchen environment, loads the robot in the environment,
+starts up the controllers for the wheel velocities, starts up the publishing
+of laser scan messages from the rplidar and starts up the publishing of 
+pointcloud messages from the kinect.
+
+
+Launching 
+	roslaunch rosbot_navigation rosbot_teleop.launch 
+starts up the keyboard teleoperation. It doesn't publish 0 when key is released so
+you'd have to watch out for that.
+
+
+Launching 
+	roslaunch sim_envs keyboard_teleop.launch
+starts up the keyboard teleoperation. It publishes 0 when 
+you take your hands off the keyboard keys. It also performs
+some form of PID control.

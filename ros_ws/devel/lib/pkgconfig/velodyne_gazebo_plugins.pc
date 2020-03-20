@@ -1,0 +1,8 @@
+prefix=/root/ros_ws/devel
+
+Name: velodyne_gazebo_plugins
+Description: Description of velodyne_gazebo_plugins
+Version: 1.0.6
+Cflags: -I/root/ros_ws/src/velodyne_simulator/velodyne_gazebo_plugins/include
+Libs: -L/root/ros_ws/devel/lib -lgazebo_ros_velodyne_laser
+Requires: roscpp sensor_msgs gazebo_ros

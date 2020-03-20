@@ -1,0 +1,8 @@
+prefix=/root/ros_ws/install
+
+Name: gtsam_tutorials
+Description: Description of gtsam_tutorials
+Version: 0.0.0
+Cflags: 
+Libs: -L/root/ros_ws/install/lib 
+Requires: 
