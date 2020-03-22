@@ -20,20 +20,11 @@ const double PI = 3.1415926;
 
 double sensorOffsetX = 0;
 double sensorOffsetY = 0;
-bool twoWayDrive = true;
-double lookAheadDis = 0.5;
-double yawRateGain = 7.5;
-double stopYawRateGain = 7.5;
-double maxYawRate = 0.8;
-double maxSpeed = 1.0;
-double maxAccel = 1.0;
-double switchTimeThre = 1.0;
-double dirDiffThre = 0.1;
-double stopDisThre = 0.2;
-double slowDwnDisThre = 1.0;
+double maxYawRate = 0.5;
+double maxSpeed = 0.5;
+double maxAccel = 0.8;
 bool autonomyMode = false;
-double autonomySpeed = 1.0;
-double joyToSpeedDelay = 5.0;
+double autonomySpeed = 0.5;
 
 float joySpeed = 0;
 float joyYaw = 0;
@@ -59,12 +50,13 @@ double odomTime = 0;
 double joyTime = 0;
 int pathPointID = 0;
 int pathInit = false;
-bool navFwd = true;
+bool use_localplanner = true;
 double switchTime = 0;
 double real_speed = 1.0;
 
 double goalX = 0, goalY = 0;
-double tolerance = 0.5;
+double finalgoalX=0, finalgoalY=0;
+double tolerance = 0.2;
 bool wp_backward = false;
 
 nav_msgs::Path path;
@@ -101,9 +93,15 @@ void waypointHandler(const geometry_msgs::PointStamped::ConstPtr& goal)
   goalY = goal->point.y;
 }
 
+void finalwaypointHandler(const geometry_msgs::PointStamped::ConstPtr& goal)
+{
+  finalgoalX = goal->point.x;
+  finalgoalY = goal->point.y;
+}
+
 bool goalReached()
 {
-  double distance = sqrt(pow((robotX - goalX),2) + pow((robotY - goalY),2));
+  double distance = sqrt(pow((robotX - finalgoalX),2) + pow((robotY - finalgoalY),2));
   if (distance < tolerance)
     return true;
 
@@ -111,23 +109,26 @@ bool goalReached()
 }
 
 
-bool waypoint_forward()
+double waypoint_forward()
 {
   bool waypoint_forward = true;
-  double pointX = goalX - robotX;
-  double pointY = goalY - robotY;
+  double pointX = finalgoalX - robotX;
+  double pointY = finalgoalY - robotY;
   double x = pointX * cos(robotYaw) + pointY * sin(robotYaw);
   double y = -pointX * sin(robotYaw) + pointY * cos(robotYaw);
 
-  double ang = atan2(x,y);
-  if (ang > 0)
-    waypoint_forward = true;
+  // double ang = atan2(x,y);
+  double goalyaw = atan2(pointY, pointX);
+  double ang = robotYaw - goalyaw;
+  // cout << ang << endl;
+  // if (-0.4<ang and ang<1.2)
+  //   waypoint_forward = true;
   
-  else if (ang < 0)
-    waypoint_forward = false;
+  // else 
+  //   waypoint_forward = false;
   
 
-  return waypoint_forward;
+  return ang;
 }
 
 
@@ -145,6 +146,11 @@ void autonomyMode_activate(const std_msgs::Bool::ConstPtr& data)
   }
 }
 
+void useplannerHandler(const std_msgs::Bool::ConstPtr& data)
+{
+  use_localplanner = data->data;
+}
+
 void backwardHandler(const std_msgs::Bool::ConstPtr& data)
 {
   wp_backward = data->data;
@@ -157,11 +163,13 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "pathFollower");
   ros::NodeHandle nh;
 
-  ros::Subscriber subOdom = nh.subscribe<nav_msgs::Odometry> ("/state_estimation", 5, odomHandler);
+  ros::Subscriber subOdom = nh.subscribe<nav_msgs::Odometry> ("/odom", 5, odomHandler);
   ros::Subscriber subJoystick = nh.subscribe<sensor_msgs::Joy> ("/joy", 5, joystickHandler);
   ros::Subscriber subGoal = nh.subscribe<geometry_msgs::PointStamped> ("/local_waypoint", 5, waypointHandler);
+  ros::Subscriber subfinGoal = nh.subscribe<geometry_msgs::PointStamped> ("/way_point", 5, finalwaypointHandler);
   ros::Subscriber subAutonomy = nh.subscribe<std_msgs::Bool> ("/activate_autonomy", 1, autonomyMode_activate);
   ros::Subscriber subDirection = nh.subscribe<std_msgs::Bool> ("/wp_backward", 1, backwardHandler);
+  ros::Subscriber subuseplanner = nh.subscribe<std_msgs::Bool> ("/use_localplanner", 1, useplannerHandler);
   ros::Publisher pubSpeed = nh.advertise<geometry_msgs::Twist>("/cmd_vel",5);
   geometry_msgs::Twist cmd_spd;
 
@@ -173,7 +181,12 @@ int main(int argc, char** argv)
   	ros::spinOnce();
     if (autonomyMode)
     {
-		      float pathDir = atan2((goalY - robotY), (goalX - robotX));
+          float pathDir = 0;
+          if (use_localplanner)
+		         pathDir = atan2((goalY - robotY), (goalX - robotX));
+          else
+             pathDir = atan2((finalgoalY - robotY), (finalgoalX - robotX));
+
 		      float dirDiff = robotYaw - pathDir;
 		      if (dirDiff > PI) dirDiff -= 2*PI;
 		      else if (dirDiff < -PI) dirDiff += 2*PI;
@@ -188,32 +201,46 @@ int main(int argc, char** argv)
 
 		      robotYawRate *= autonomySpeed;
 
-		      if (robotSpeed < joySpeed2) robotSpeed += maxAccel / 100.0;
-		      else if (robotSpeed > joySpeed2) robotSpeed -= maxAccel / 100.0;
 
-		      if (not waypoint_forward())
-		        robotSpeed = 0;
+          
+		      // if (not waypoint_forward())
+		      //   robotSpeed = 0;
 
-		      if (wp_backward)
-		      {
-		        robotSpeed = 0;
-		        robotYawRate = 1;
-		        ROS_INFO("Turning");
-		      }
+          if (robotSpeed < joySpeed2) 
+            robotSpeed += maxAccel / 100.0; 
+          else if (robotSpeed > joySpeed2) 
+            robotSpeed -= maxAccel / 100.0; 
 
+          if ( use_localplanner)
+          {
+            double dir = waypoint_forward();
+            cout << dir << endl;
+
+            if (dir >= -0.5 and dir <= 0.5)
+              robotSpeed = robotSpeed;
+
+            else
+            {
+                robotSpeed = 0;
+                robotYawRate = -2;
+            }
+          }
+		      
 		      if (goalReached())
 		      {
 		          robotSpeed = 0;
 		          robotYawRate = 0;
+              // ROS_INFO("Reached local waypoint");
 		      }
-
-    }
+          // cout << "yaw: "<<robotYawRate<<endl;
+      }  
+    
 
     else
     {
 		      float joySpeed2 = maxSpeed * joySpeed;
 		      robotYawRate = joyYaw;
-
+          waypoint_forward();
 		       if (joySpeed != 0)
 		       {
 		         if (robotSpeed < joySpeed2) robotSpeed += maxAccel / 100.0;

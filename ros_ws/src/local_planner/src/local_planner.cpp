@@ -36,6 +36,7 @@ ros::Publisher pubAltPath;
 ros::Publisher pubAltWaypoints;
 ros::Publisher pubTurn;
 ros::Publisher pubBack;
+ros::Publisher pubUsePlanner;
 double tolerance = 0.5;
 
 bool waypoint_received = false;
@@ -159,24 +160,45 @@ int arg_min(double array[], int size)
         if(array[i] < array[index])
             index = i;              
     }
+    if (index == 18 and array[0] == array[18])
+    	index = 0;
+
 
     return index;
 }
 
-
+//factor both the angle of deviation and
+//the distance to the goal waypoint in the scoring
 void score_alternate_waypoints(double x, double y)
 {
+	int countblocked=0;
 	for (int i=0; i<num_paths; i++)
-	{
+	{	
 		if (occupancy[i] == 1)
-			score[i] = 1000;
+		{
+			score[i] = 1000000;
+			countblocked++;
+		}
 		else
 		{
 			double alt_ang = atan2((occY[i]-robotY), (occX[i]-robotX));
 			double wp_ang = atan2((y-robotY), (x-robotX));
-			double sc = fabs(alt_ang-wp_ang);
+			double dist = sqrt(pow((occX[i]-goalX),2) + pow((occY[i]-goalY),2));
+			double sc = fabs(alt_ang-wp_ang)+dist;
 			score[i] = sc;
 		}
+	}
+	std_msgs::Bool useplanner;
+	if (countblocked > 0)
+	{
+		useplanner.data = true;
+		pubUsePlanner.publish(useplanner);
+	}
+
+	else
+	{
+		useplanner.data = true;
+		pubUsePlanner.publish(useplanner);
 	}
 }
 
@@ -255,6 +277,7 @@ void display_alternate_paths()
 
 			angsy[i] = ang;
 			tf2::Quaternion quat;
+			quat.setRPY(0,0,ang);
 			geometry_msgs::Quaternion q = tf2::toMsg(quat);
 			paths.poses[i].orientation = q;
 
@@ -285,10 +308,6 @@ void generate_alternate_paths()
 		arrayY[i] = range * cos(i*10*0.01745);
 		ang_rots[i] = atan(arrayY[i]/arrayX[i]);
 	}
-	 cout << endl;
-	for (int i=0; i<19; i++)
-		cout << arrayX[i] <<"_" << arrayY[i] <<"_"<<ang_rots[i]<<",    ";
-	cout << endl;
 
 }
 
@@ -307,6 +326,7 @@ int main(int argc, char **argv)
   	pubAltWaypoints = nh.advertise<sensor_msgs::PointCloud2>("/alternate_waypoints",5);
   	pubTurn = nh.advertise<geometry_msgs::Twist>("/cmd_vel",5);
   	pubBack = nh.advertise<std_msgs::Bool>("/wp_backward",1);
+  	pubUsePlanner = nh.advertise<std_msgs::Bool>("/use_localplanner",1);
 
   	initialize_arrays();
 

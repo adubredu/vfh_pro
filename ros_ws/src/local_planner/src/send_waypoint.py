@@ -9,7 +9,7 @@ class transmit_routine:
 		rospy.init_node('transmit_routine')
 		self.robotX = 0; self.robotY = 0;
 		self.pub = rospy.Publisher("/way_point", PointStamped, queue_size=1)
-		rospy.Subscriber("/state_estimation", Odometry, self.handleOdometry)
+		rospy.Subscriber("/odom", Odometry, self.handleOdometry)
 		self.tolerance = 1.0
 		
 		self.x = [0.0094, -0.3799, -0.8583, -2.1060, -2.7487, -3.2521, -3.11226, 
@@ -21,7 +21,7 @@ class transmit_routine:
 					11.052, 12.0904, 13.5355, 13.7500, 13.5488, 13.22313, 11.9623, 
 					10.5411, 8.526895, 6.74429, 4.8596, 3.3084788, 1.489633, -1.05975]
 		self.count = 0
-		self.size = 
+		self.size = 30
 		self.transmit_routine()
 		rospy.spin()
 
