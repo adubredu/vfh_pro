@@ -3,8 +3,8 @@
 	Architecture:
 	1. goal is received from a goal client by goal service
 	2. In goal service, in a while loop, plan from current pose to goal
-	3. Send plan to posearray client(waypointexample)
-	4. In waypointexample, goal is followed until it reaches bounds 3x6
+	3. Send plan to handle_waypoint_service client
+	4. In ,handle_waypoint_service goal is followed until it reaches bounds 3x6
 	5. Returns back to goal service while loop and plans again from 
 		vehicle pose to goal. And transmits plan again
 	6. while loop breaks when |currentpose - goalpose| < threshold.
@@ -33,14 +33,19 @@ GlobalPlanner::GlobalPlanner(ros::NodeHandle* nodehandle):nh(*nodehandle)
 	backPub = nh.advertise<geometry_msgs::PointStamped>("/way_point",5);
 	pubBoundary = nh.advertise<geometry_msgs::PolygonStamped> ("/search_space", 5);
 	pubPlannerCloud = nh.advertise<sensor_msgs::PointCloud2> ("/plannercloud", 2);
+	pubWaypoint = nh.advertise<geometry_msgs::PointStamped> ("/way_point", 5);
+	pubLast = nh.advertise<std_msgs::Bool> ("/last_waypoint",1);
 	init_stack();
 
 	service_goal = nh.advertiseService("goal_channel", &GlobalPlanner::receive_goal_service,this);
+	plan_to_wp_service = nh.advertiseService("specific_waypoint_channel", &GlobalPlanner::handle_waypoint_service, this);
 	ROS_INFO("PLAYER READY SAMA");
 
 }
 
 
+//Generates a plan from current robot's position to 
+//coordinates (goalX, goalY)
 bool GlobalPlanner::plan(double goalX, double goalY)
 {
 	ros::spinOnce();
@@ -84,7 +89,8 @@ bool GlobalPlanner::plan(double goalX, double goalY)
 }
 
 
-
+//Transmit's planned trajectory to the specific_waypoint_channel
+//service and publishes the path for visualization
 bool GlobalPlanner::transmit_plan_client()
 {
 	ros::spinOnce();
@@ -170,6 +176,8 @@ bool GlobalPlanner::transmit_plan_client()
 		
 }
 
+
+//initializes the stacked pointcloud data
 void GlobalPlanner::init_stack()
 {
 	for (int i = 0; i < laserCloudStackNum; i++) {
@@ -177,11 +185,14 @@ void GlobalPlanner::init_stack()
   }
 }
 
+
+// rounds a number to the nearest ...
 double GlobalPlanner::round_num(double num) const
 {
 	return floor(num*10+0.5)/10;
 }
 
+//stacks incoming pointcloud
 void GlobalPlanner::stack_pointcloud()
 {
 	laserCloudStack[laserCloudCount]->clear();
@@ -198,6 +209,7 @@ void GlobalPlanner::stack_pointcloud()
 	pubPlannerCloud.publish(pcloud);
 }
 
+//receives incoming pointcloud from its topic
 void GlobalPlanner::pointCloudCallback(const sensor_msgs::PointCloud2ConstPtr& laserCloud2)
 {
 	plannerCloud->clear();
@@ -205,7 +217,7 @@ void GlobalPlanner::pointCloudCallback(const sensor_msgs::PointCloud2ConstPtr& l
 	stack_pointcloud();
 }
 
-
+//receives incoming robot odometry from its topic
 void GlobalPlanner::odometryCallback(const nav_msgs::Odometry::ConstPtr& odom)
 {
 	double roll,pitch,yaw;
@@ -214,10 +226,13 @@ void GlobalPlanner::odometryCallback(const nav_msgs::Odometry::ConstPtr& odom)
 																.getRPY(roll, pitch, yaw);
 	vehicleX = odom->pose.pose.position.x;
   	vehicleY = odom->pose.pose.position.y;
+  	vehicleZ = odom->pose.pose.position.z;
 }
 
 
-
+//receives the goal coordinates to plan to from the goal_channel service,
+//calls the plan method to plan a path to the goal coordinates,
+//performs contingency behaviors if no valid plan is found.
 bool GlobalPlanner::receive_goal_service(global_planner::Goal::Request &req, global_planner::Goal::Response &res)
 {
 	ros::Rate loop_rate(0.5);
@@ -339,8 +354,104 @@ bool GlobalPlanner::receive_goal_service(global_planner::Goal::Request &req, glo
 }
 
 
+// receives planned trajectory from the specific_waypoint_channel service
+// and sends waypoints one after the other to the local planner if the current
+// waypoint is reached. 
+// Triggers replanning after some time interval (currently 5 seconds)
+bool GlobalPlanner::handle_waypoint_service(global_planner::Waypoints::Request &req, global_planner::Waypoints::Response &res)
+{
+  auto t1 = std::chrono::high_resolution_clock::now();
+  int size = req.waypoints.header.seq;
+  waypoint_array = req.waypoints;
+  ROS_INFO("Received path of size: %d", size);
+
+  int wayPointID = 0;
+  int waypointSize = waypoint_array.header.seq;
+  std_msgs::Bool last;
+
+  
+  geometry_msgs::PointStamped waypointMsgs;
+  waypointMsgs.header.frame_id = "/map";
+
+  
+  std_msgs::Float32 speedMsgs;
+
+  
+  geometry_msgs::PolygonStamped boundaryMsgs;
+  boundaryMsgs.header.frame_id = "/map";
 
 
+  ros::Rate rate(100);
+  bool status = ros::ok();
+
+  // waypointXYRadius=0.5;
+  while (status) {
+    ros::spinOnce();
+
+    float disX = vehicleX - waypoint_array.poses[wayPointID].position.x;
+    float disY = vehicleY - waypoint_array.poses[wayPointID].position.y;
+    float disZ = vehicleZ - waypoint_array.poses[wayPointID].position.z;
+
+
+    // publish waypoint, speed, and boundary messages at certain frame rate
+   
+
+    if (curTime - waypointTime > 1.0 / frameRate) {
+       if (wayPointID < size-2)
+        last.data = false;
+      else 
+        last.data = true;
+
+      waypointMsgs.header.stamp = ros::Time().fromSec(curTime);
+      waypointMsgs.point.x = waypoint_array.poses[wayPointID].position.x;
+      waypointMsgs.point.y = waypoint_array.poses[wayPointID].position.y;
+      waypointMsgs.point.z = waypoint_array.poses[wayPointID].position.z;
+      pubWaypoint.publish(waypointMsgs);
+      pubLast.publish(last);
+
+      if (sendSpeed) {
+        speedMsgs.data = speed;
+        pubSpeed.publish(speedMsgs);
+      }
+
+      
+
+      waypointTime = curTime;
+    }
+
+    if (wayPointID == size-2) waypointXYRadius = 1.0;
+    
+    if (sqrt(disX * disX + disY * disY) < waypointXYRadius) {
+      wayPointID++;
+    }
+    
+    
+    if (wayPointID == size) {break;}
+
+
+//To get Marco to stop while in the process of following a waypoint
+    if (stop_immediately) 
+      {
+        res.status = true;
+        return true;
+      }
+      auto t2 = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double, std::milli> fp_ms = t2 - t1;
+
+      if (fp_ms.count() > 5000)
+        return true;
+
+    status = ros::ok();
+    rate.sleep();
+  }
+
+  ROS_INFO("I'm there");
+  res.status = true;
+  return true;
+}
+
+
+// returns true if robot is at goal coordinates and false otherwise
 bool GlobalPlanner::at_goal(double goalX, double goalY)
 {
 	double dist = sqrt(pow((vehicleX-goalX),2) + pow((vehicleY-goalY),2));
@@ -350,6 +461,8 @@ bool GlobalPlanner::at_goal(double goalX, double goalY)
 		return false;
 }
 
+
+// returns true if sampled state is within an obstacle
 bool GlobalPlanner::intersects_obstacle(double stateX, double stateY, double pointX, double pointY) const
 {
 	double vehicle_state_gradient = ((vehicleY-stateY)/(vehicleX-stateX));
@@ -361,6 +474,10 @@ bool GlobalPlanner::intersects_obstacle(double stateX, double stateY, double poi
 	return false;
 }
 
+
+// used for collision-checking by OMPL.
+// returns true if state is valid (not inside an obstacle)
+// and false otherwise
 bool GlobalPlanner::isStateValid(const ob::State *state) const
 {
 	const double x = std::min((double)state->as<ob::RealVectorStateSpace::StateType>()->values[0],

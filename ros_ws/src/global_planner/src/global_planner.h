@@ -32,6 +32,7 @@
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -61,6 +62,7 @@ public:
 	void pointCloudCallback(const sensor_msgs::PointCloud2ConstPtr& laserCloud2);
 	void odometryCallback(const nav_msgs::Odometry::ConstPtr& odom);
 	bool receive_goal_service(global_planner::Goal::Request &req, global_planner::Goal::Response &res);
+	bool handle_waypoint_service(global_planner::Waypoints::Request &req, global_planner::Waypoints::Response &res);
 	double round_num(double x) const;
 	void stack_pointcloud();
 	void init_stack();
@@ -77,12 +79,15 @@ private:
 	//const int threshold = 0.3;
 	double odomTime = 0.0;
 	double planning_time = 1.0;
-	double vehicleX=0.0; double vehicleY=0.0;
+	double vehicleX=0.0; double vehicleY=0.0; double vehicleZ=0.0;
+	double curTime = 0, waypointTime = 0;
+	double frameRate = 5.0;
 	double laser_radius = 10.0;
 	double too_close_threshold = 0.5;
 	double minBoundX=-20; double minBoundY=-10.0;
 	double maxBoundX=10; double maxBoundY=10.0;
 	double goalX,goalY = 0.0;
+	double speed = 1.0;
 	double confidence_boundary = 4.0;
 	int *voxel_grid;// = new int[voxel_num_x*voxel_num_y];
 	double voxel_size = 0.1;
@@ -94,6 +99,9 @@ private:
 	double voxel_offsetY = 0.0;
 	int v_size = 100000;
 	bool wall_follow_right=true;
+	bool stop_immediately = false;
+	bool sendSpeed = true;
+	double waypointXYRadius = 1.0;
 
 
 
@@ -104,9 +112,17 @@ private:
 	ros::Publisher backPub;
 	ros::Publisher pubBoundary;
 	ros::Publisher pubPlannerCloud;
+	ros::Publisher pubWaypoint;
+	ros::Publisher pubLast;
+	ros::Publisher pubSpeed;
+
 	ros::Subscriber subLaserCloud;
 	ros::Subscriber subclose;
 	ros::ServiceServer service_goal;
+	ros::ServiceServer plan_to_wp_service;
+
+	geometry_msgs::PoseArray waypoint_array;
+
 
 };
 
