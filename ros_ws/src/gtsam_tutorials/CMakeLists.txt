@@ -9,6 +9,10 @@ find_package(OpenCV REQUIRED)
 find_package(Boost REQUIRED COMPONENTS
 	thread
 	system
+	regex
+	timer
+	serialization
+	filesystem
 )
 find_package(Eigen3 REQUIRED)
 find_package(GTSAMCMakeTools)
