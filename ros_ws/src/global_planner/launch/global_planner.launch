@@ -1,0 +1,3 @@
+<launch>
+	<node pkg="global_planner" type="global_planner" name="global_planner" output="screen"/>
+</launch>

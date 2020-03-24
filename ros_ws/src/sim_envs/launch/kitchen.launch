@@ -17,4 +17,7 @@
 	    <arg name="world_name" value="$(arg world_name)"/>
 	</include>
 	<include file="$(find rosbot_description)/launch/rosbot_gazebo.launch"/>
+	<node pkg="global_planner" type="passthrough_filter" name="passthrough_filter" output="screen"/>
+	<include file="$(find sim_envs)/launch/octomap.launch"/>
+	<include file="$(find global_planner)/launch/navigation.launch"/>
 </launch>

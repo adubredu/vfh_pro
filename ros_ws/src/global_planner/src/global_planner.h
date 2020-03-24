@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <cmath>
 #include <functional>
+#include <vector>
 
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_cloud.h>
@@ -30,6 +31,7 @@
 #include <nav_msgs/Path.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/Point.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
@@ -39,6 +41,8 @@
 #include <sensor_msgs/Joy.h>
 #include <std_msgs/String.h>
 #include <nav_msgs/Path.h>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 
 #include "global_planner/Goal.h"
 #include "global_planner/Waypoints.h"
@@ -66,6 +70,8 @@ public:
 	double round_num(double x) const;
 	void stack_pointcloud();
 	void init_stack();
+	void voxelCallback(const visualization_msgs::MarkerArray::ConstPtr& voxels);
+
 
 private:
 	bool at_goal(double goalX, double goalY);
@@ -83,7 +89,7 @@ private:
 	double curTime = 0, waypointTime = 0;
 	double frameRate = 5.0;
 	double laser_radius = 10.0;
-	double too_close_threshold = 0.5;
+	double too_close_threshold = 0.2;
 	double minBoundX=-20; double minBoundY=-10.0;
 	double maxBoundX=10; double maxBoundY=10.0;
 	double goalX,goalY = 0.0;
@@ -118,11 +124,12 @@ private:
 
 	ros::Subscriber subLaserCloud;
 	ros::Subscriber subclose;
+	ros::Subscriber subvoxels;
 	ros::ServiceServer service_goal;
 	ros::ServiceServer plan_to_wp_service;
 
 	geometry_msgs::PoseArray waypoint_array;
-
+	vector <geometry_msgs::Point> voxelarray;
 
 };
 

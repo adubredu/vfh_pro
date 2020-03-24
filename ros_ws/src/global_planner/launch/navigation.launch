@@ -1,0 +1,5 @@
+<launch>
+	<include file="$(find local_planner)/launch/local_planner.launch"/>
+	<include file="$(find global_planner)/launch/global_planner.launch"/>
+
+</launch>

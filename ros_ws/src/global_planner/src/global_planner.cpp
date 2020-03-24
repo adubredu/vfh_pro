@@ -25,9 +25,10 @@ GlobalPlanner::GlobalPlanner(ros::NodeHandle* nodehandle):nh(*nodehandle)
 {
 	
 	subclose = nh.subscribe<nav_msgs::Odometry>
-								("/state_estimation",5,&GlobalPlanner::odometryCallback,this);
-	subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>
-	                              (/*"/registered_scan"/*/"/passthrough/output"/**/, 5, &GlobalPlanner::pointCloudCallback,this);
+								("/odom",5,&GlobalPlanner::odometryCallback,this);
+	subvoxels = nh.subscribe<visualization_msgs::MarkerArray>
+								("/occupied_cells_vis_array",5,&GlobalPlanner::voxelCallback,this);
+	
 	pubPath = nh.advertise<nav_msgs::Path> ("/global_path", 5);
 	pubPoint = nh.advertise<geometry_msgs::PointStamped>("/goal_point",5);
 	backPub = nh.advertise<geometry_msgs::PointStamped>("/way_point",5);
@@ -43,6 +44,23 @@ GlobalPlanner::GlobalPlanner(ros::NodeHandle* nodehandle):nh(*nodehandle)
 
 }
 
+
+//receives incoming pointcloud from its topic
+void GlobalPlanner::voxelCallback(const visualization_msgs::MarkerArray::ConstPtr& voxels)
+{
+	voxelarray.clear();
+	int markerarray_size = voxels->markers.size();
+	for (int i=0; i<markerarray_size; i++)
+	{
+		int pointsarraysize = voxels->markers[i].points.size();
+		for (int j=0; j<pointsarraysize; j++)
+		{
+			voxelarray.push_back(voxels->markers[i].points[j]);
+		}
+	}
+	
+
+}
 
 //Generates a plan from current robot's position to 
 //coordinates (goalX, goalY)
@@ -99,7 +117,7 @@ bool GlobalPlanner::transmit_plan_client()
 		return false;
 
 	nav_msgs::Path path;
-	path.header.frame_id="map";
+	path.header.frame_id="odom";
 
 	og::PathGeometric &p = ss->getSolutionPath();
 	p.interpolate();
@@ -205,17 +223,11 @@ void GlobalPlanner::stack_pointcloud()
 
  	sensor_msgs::PointCloud2 pcloud;
 	pcl::toROSMsg(*plannerCloud, pcloud);
-	pcloud.header.frame_id = "/map";
+	pcloud.header.frame_id = "/odom";
 	pubPlannerCloud.publish(pcloud);
 }
 
-//receives incoming pointcloud from its topic
-void GlobalPlanner::pointCloudCallback(const sensor_msgs::PointCloud2ConstPtr& laserCloud2)
-{
-	plannerCloud->clear();
-	pcl::fromROSMsg(*laserCloud2, *plannerCloud);	
-	stack_pointcloud();
-}
+
 
 //receives incoming robot odometry from its topic
 void GlobalPlanner::odometryCallback(const nav_msgs::Odometry::ConstPtr& odom)
@@ -227,6 +239,7 @@ void GlobalPlanner::odometryCallback(const nav_msgs::Odometry::ConstPtr& odom)
 	vehicleX = odom->pose.pose.position.x;
   	vehicleY = odom->pose.pose.position.y;
   	vehicleZ = odom->pose.pose.position.z;
+  	// cout << voxelarray[5] << endl;
 }
 
 
@@ -235,12 +248,15 @@ void GlobalPlanner::odometryCallback(const nav_msgs::Odometry::ConstPtr& odom)
 //performs contingency behaviors if no valid plan is found.
 bool GlobalPlanner::receive_goal_service(global_planner::Goal::Request &req, global_planner::Goal::Response &res)
 {
+	
+
 	ros::Rate loop_rate(0.5);
 	bool replan = false;
+	bool reached_goal = false;
 	goalX = req.goal_pose.position.x;	goalY = req.goal_pose.position.y;
 
 	geometry_msgs::PointStamped goal;
-	goal.header.frame_id = "/map";
+	goal.header.frame_id = "/odom";
 	goal.point.x = goalX;
 	goal.point.y = goalY;
 	pubPoint.publish(goal);
@@ -251,7 +267,6 @@ bool GlobalPlanner::receive_goal_service(global_planner::Goal::Request &req, glo
 
 	while (ros::ok())
 	{
-		ros::spinOnce();
 		auto space (std::make_shared<ob::RealVectorStateSpace>());
 		//set bounds
 		double delta = 1.0;
@@ -290,9 +305,10 @@ bool GlobalPlanner::receive_goal_service(global_planner::Goal::Request &req, glo
 		space->addDimension(minBoundX, maxBoundX);
 		space->addDimension(minBoundY, maxBoundY);
 
+
 		geometry_msgs::PolygonStamped boundaryMsgs;
 		boundaryMsgs.polygon.points.resize(4);
-		boundaryMsgs.header.frame_id = "/map";
+		boundaryMsgs.header.frame_id = "/odom";
 		boundaryMsgs.polygon.points[0].x = minBoundX;
 		boundaryMsgs.polygon.points[0].y = minBoundY;
 		boundaryMsgs.polygon.points[3].x = minBoundX;
@@ -304,13 +320,21 @@ bool GlobalPlanner::receive_goal_service(global_planner::Goal::Request &req, glo
 
 		pubBoundary.publish(boundaryMsgs);
 
+		// auto si (std::make_shared<ob::SpaceInformation>(space));
+		// si->setStateValidityChecker(boost::bind(&GlobalPlanner::isStateValid, this, _1));
+
+		// ss.reset(new og::SimpleSetup(ob::StateSpacePtr(space)));
 		ss = std::make_shared<og::SimpleSetup>(space);
 		ss->setStateValidityChecker([this](const ob::State *state)
 												{return isStateValid(state);});
-		ss->getSpaceInformation()->setStateValidityCheckingResolution
-														(1.0/space->getMaximumExtent());
-		ss->setPlanner(ob::PlannerPtr (new og::RRTstar(ss->getSpaceInformation())));
 
+		ss->getSpaceInformation()->setStateValidityCheckingResolution
+														(0.05);
+		// cout << "ending" << endl; res.status=true; return true;
+		// cout << "************received goal************" << endl;
+		ss->setPlanner(ob::PlannerPtr (new og::RRTstar(ss->getSpaceInformation())));
+		// ss->setPlanner(make_shared<og::RRTstar>(ss->getSpaceInformation()));
+		// cout << "************problem above ************" << endl;
 		if (plan(goalX,goalY))
 		{
 			ROS_INFO("REPLANNING...");
@@ -320,7 +344,7 @@ bool GlobalPlanner::receive_goal_service(global_planner::Goal::Request &req, glo
 		else
 		{
 			geometry_msgs::PointStamped back;
-			back.header.frame_id = "/map";
+			back.header.frame_id = "/odom";
 			// back.header.stamp = ros::Time().fromSec(curTime);
 		
 			
@@ -343,12 +367,15 @@ bool GlobalPlanner::receive_goal_service(global_planner::Goal::Request &req, glo
 
     	if (at_goal(goalX,goalY))
     	{
+    		reached_goal = true;
     		res.status=true;
     		break;
     	}
 
-	}
 
+
+	}
+	res.status=true;
 	return true;
 
 }
@@ -371,14 +398,14 @@ bool GlobalPlanner::handle_waypoint_service(global_planner::Waypoints::Request &
 
   
   geometry_msgs::PointStamped waypointMsgs;
-  waypointMsgs.header.frame_id = "/map";
+  waypointMsgs.header.frame_id = "/odom";
 
   
   std_msgs::Float32 speedMsgs;
 
   
   geometry_msgs::PolygonStamped boundaryMsgs;
-  boundaryMsgs.header.frame_id = "/map";
+  boundaryMsgs.header.frame_id = "/odom";
 
 
   ros::Rate rate(100);
@@ -480,6 +507,7 @@ bool GlobalPlanner::intersects_obstacle(double stateX, double stateY, double poi
 // and false otherwise
 bool GlobalPlanner::isStateValid(const ob::State *state) const
 {
+	cout << "validating"<<endl;
 	const double x = std::min((double)state->as<ob::RealVectorStateSpace::StateType>()->values[0],
 		maxBoundX);
 	const double y = std::min((double)state->as<ob::RealVectorStateSpace::StateType>()->values[1],
@@ -490,11 +518,12 @@ bool GlobalPlanner::isStateValid(const ob::State *state) const
 	double disp = sqrt(pow((x-vehicleX),2) + pow((y-vehicleY),2));
 	if (disp < laser_radius)
 	{
-		int cloudsize = plannerCloud->points.size();
-		pcl::PointXYZI point;
-		for(int i=0; i<cloudsize; i++)
+		geometry_msgs::Point point;
+		int voxelarray_size = voxelarray.size();
+		cout << voxelarray_size << endl;
+		for(int i=0; i<voxelarray_size; i++)
 		{
-			point = plannerCloud->points[i];
+			point = voxelarray[i];
 			float pointX = point.x;
 		    float pointY = point.y;
 		    float pointZ = point.z;
@@ -503,7 +532,6 @@ bool GlobalPlanner::isStateValid(const ob::State *state) const
 
 		    float dis = sqrt(pow(pointX-x,2)+pow(pointY-y,2));
 
-		    bool intersects = intersects_obstacle(x, y, pointX, pointY);
 		    if (dis < too_close_threshold)
 		    {
 		    	free = false;

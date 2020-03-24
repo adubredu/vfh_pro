@@ -5,7 +5,7 @@ set(eigen_INCLUDE_DIR /usr/include/eigen3/Eigen)
 set(Eigen3_DIR /usr/lib/cmake/eigen3)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11)
+add_compile_options(-std=c++14)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -55,5 +55,7 @@ link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
 add_executable(global_planner src/global_planner.cpp)
+add_executable(passthrough_filter src/passthrough_filter.cpp)
 
 target_link_libraries(global_planner ${catkin_LIBRARIES} ${OMPL_LIBRARIES} ${OpenCV_LIBS} ${Eigen3_DIR})
+target_link_libraries(passthrough_filter ${catkin_LIBRARIES} ${PCL_LIBRARIES})
