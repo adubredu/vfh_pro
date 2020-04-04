@@ -1,4 +1,5 @@
 <launch>
-	<node name='to_cmd_vel' pkg='sim_envs' type='keyboard_to_cmd_vel.py' />
-	<include file="$(find turtlebot_teleop)/launch/keyboard_teleop.launch"/>
+	<node name='robot_teleop' pkg='teleop_twist_keyboard' type='teleop_twist_keyboard.py'>
+	<remap from='/teleop/cmd_vel' to='/cmd_vel'/>
+	</node>
 </launch>

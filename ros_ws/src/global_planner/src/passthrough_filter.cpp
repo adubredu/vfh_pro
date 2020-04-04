@@ -21,7 +21,7 @@ void cloud_callback(const pcl::PCLPointCloud2ConstPtr& input)
     //pass through filter
     pass_through_filter.setInputCloud (input);
     pass_through_filter.setFilterFieldName("y");
-    pass_through_filter.setFilterLimits(-0.3,0.2);
+    pass_through_filter.setFilterLimits(-0.3,1.0);
     pass_through_filter.filter (*cloud_pass);
 
     //voxel grid filter
@@ -43,7 +43,7 @@ int main (int argc, char** argv)
 	ros::init (argc, argv, "passthrough_filter");
 	ros::NodeHandle nh;
 
-	ros::Subscriber sub = nh.subscribe ("/camera/depth/points", 1, cloud_callback);
+	ros::Subscriber sub = nh.subscribe ("/head_camera/depth_registered/points", 1, cloud_callback);
 	pub = nh.advertise<sensor_msgs::PointCloud2> ("/filtered_cloud", 1);
 
 	// Spin
