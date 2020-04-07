@@ -1,0 +1,8 @@
+<launch>
+  	<include file="$(find sim_envs)/launch/house_env.launch"/>
+	<include file="$(find fetch_gazebo)/launch/include/fetch.launch.xml" />
+  	<include file="$(find fetch_navigation)/launch/fetch_nav.launch"/>
+  	<include file="$(find slim)/launch/perception.launch"/>
+  	<include file="$(find slim)/launch/gotoplaces.launch"/>
+
+</launch>

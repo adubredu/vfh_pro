@@ -1,10 +1,11 @@
 <launch>
-	<include file="$(find aws_robomaker_small_house_world)/launch/view_small_house.launch"/>
+	<!-- <include file="$(find aws_robomaker_small_house_world)/launch/view_small_house.launch"/> -->
+  <include file="$(find sim_envs)/launch/house_env.launch"/>
 	<include file="$(find fetch_gazebo)/launch/include/fetch.launch.xml" />
 
 	<!-- <include file="$(find rosbot_description)/launch/rosbot_gazebo.launch"/> -->
-	<node pkg="global_planner" type="passthrough_filter" name="passthrough_filter" output="screen"/>
+	<!-- <node pkg="global_planner" type="passthrough_filter" name="passthrough_filter" output="screen"/> -->
 	<!-- <include file="$(find sim_envs)/launch/octomap.launch"/> -->
-	<include file="$(find global_planner)/launch/navigation.launch"/> 
+	<!-- <include file="$(find global_planner)/launch/navigation.launch"/>  -->
   <include file="$(find fetch_navigation)/launch/fetch_nav.launch"/>
 </launch>
