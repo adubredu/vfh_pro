@@ -76,9 +76,9 @@ class GoToPlace:
 			pose = self.bedroom_coords
 		elif place.data == 'bathroom':
 			pose = self.bathroom_coords
-		elif place.data == 'living room':
+		elif place.data == 'livingroom':
 			pose = self.livingroom_coords
-		elif place.data == 'dining room':
+		elif place.data == 'diningroom':
 			pose = self.diningroom_coords
 		elif place.data == 'kitchen':
 			pose = self.kitchen_coords
