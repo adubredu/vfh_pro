@@ -2,16 +2,11 @@
 
 import rospy
 import numpy as np 
-<<<<<<< HEAD
 from geometry_msgs.msg import PoseArray, Pose, PoseWithCovarianceStamped
 from std_msgs.msg import String
 from move_base_msgs.msg import MoveBaseActionResult
 from math import pi, sin, cos
 from sklearn.mixture import GaussianMixture as GMM 
-=======
-from geometry_msgs.msg import PoseArray, Pose
-from std_msgs.msg import String
->>>>>>> e7bb7bb84afa58de1d6cb15a4296bc3697b715c6
 import time
 
 class Slim:
@@ -24,13 +19,10 @@ class Slim:
 		self.bottom_right_x = 8.7
 		self.bottom_right_y = -4.7
 		self.num_particles = 100
-<<<<<<< HEAD
 		self.reached_destination = True
 		self.robot_pose = Pose()
 		self.seeing = 'nothing'
 		self.view_radius = 1.0
-=======
->>>>>>> e7bb7bb84afa58de1d6cb15a4296bc3697b715c6
 
 		self.commonsense = {
 		'coke': {'kitchen':0.3, 'diningroom':0.3, 'gym':0.05, 'bathroom':0.0, 
@@ -53,13 +45,10 @@ class Slim:
 		}
 
 		rospy.Subscriber('/search_for', String, self.target_handler)
-<<<<<<< HEAD
 		rospy.Subscriber('/move_base/result', MoveBaseActionResult, self.movebase_result_handler)
 		rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, self.odometry_handler)
 		rospy.Subscriber('/seeing_what', String, self.perception_handler)
 
-=======
->>>>>>> e7bb7bb84afa58de1d6cb15a4296bc3697b715c6
 
 		# while not rospy.is_shutdown():
 		for i in range(5):
@@ -69,7 +58,6 @@ class Slim:
 		rospy.spin()
 
 
-<<<<<<< HEAD
 	def movebase_result_handler(self, res):
 		if res.status.status == 3:
 			self.reached_destination = True
@@ -86,8 +74,6 @@ class Slim:
 		self.seeing = data.data
 
 
-=======
->>>>>>> e7bb7bb84afa58de1d6cb15a4296bc3697b715c6
 	def uniform_sample(self):
 		xs = np.random.uniform(self.top_left_x, self.bottom_right_x, self.num_particles)
 		ys = np.random.uniform(self.bottom_right_y, self.top_left_y,  self.num_particles)
@@ -111,10 +97,7 @@ class Slim:
 		choice = self.importance_sample(probabilities)
 		self.resample(choice)
 		self.send_robot_to(choice)
-<<<<<<< HEAD
 		self.look_around_for(target)
-=======
->>>>>>> e7bb7bb84afa58de1d6cb15a4296bc3697b715c6
 
 
 	def importance_sample(self, prob_dict):
@@ -127,13 +110,8 @@ class Slim:
 
 	def resample(self, choice):
 		coords = self.places[choice]
-<<<<<<< HEAD
 		self.xs = np.random.normal(coords['x'], 1.0, size=self.num_particles)
 		self.ys = np.random.normal(coords['y'], 1.0, size = self.num_particles)
-=======
-		xs = np.random.normal(coords['x'], 1.0, size=self.num_particles)
-		ys = np.random.normal(coords['y'], 1.0, size = self.num_particles)
->>>>>>> e7bb7bb84afa58de1d6cb15a4296bc3697b715c6
 
 		particles = PoseArray()
 		particles.header.frame_id = "map"
@@ -151,16 +129,12 @@ class Slim:
 	def send_robot_to(self, place):
 		pl = String()
 		pl.data = place
-<<<<<<< HEAD
 		self.reached_destination = False
-=======
->>>>>>> e7bb7bb84afa58de1d6cb15a4296bc3697b715c6
 		self.goto_pub.publish(pl)
 		time.sleep(1)
 
 
 
-<<<<<<< HEAD
 	def look_around_for(self, target):
 		while not self.reached_destination:
 			pass
@@ -209,8 +183,6 @@ class Slim:
 
 
 
-=======
->>>>>>> e7bb7bb84afa58de1d6cb15a4296bc3697b715c6
 
 if __name__ == '__main__':
 	s = Slim()
