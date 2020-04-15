@@ -67,6 +67,7 @@ class GoToPlace:
 		self.kitchen_coords.orientation.w= 0.999996478621
 
 		rospy.Subscriber('/go_to', String, self.command_handler)
+		rospy.Subscriber('/go_to_pose', Pose, self.pose_command_handler)
 		rospy.spin()
 
 
@@ -87,6 +88,9 @@ class GoToPlace:
 
 		if pose is not None:
 			self.gotoplace(pose)
+
+	def pose_command_handler(self, pose):
+		self.gotoplace(pose)
 
 
 	def gotoplace(self,pose):

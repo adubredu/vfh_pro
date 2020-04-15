@@ -14,6 +14,7 @@ class Slim:
 		rospy.init_node('slim_node')
 		self.particle_pub = rospy.Publisher('/particles', PoseArray, queue_size=1)
 		self.goto_pub = rospy.Publisher('/go_to', String, queue_size=1)
+		self.gotoposepub = rospy.Publisher('/go_to_pose', Pose, queue_size=1)
 		self.top_left_x = -8.6
 		self.top_left_y = 5.5
 		self.bottom_right_x = 8.7
@@ -119,8 +120,8 @@ class Slim:
 
 		for i in range(self.num_particles):
 			pose = Pose()
-			pose.position.x = xs[i]
-			pose.position.y = ys[i]
+			pose.position.x = self.xs[i]
+			pose.position.y = self.ys[i]
 			particles.poses.append(pose)
 
 		self.particle_pub.publish(particles)
@@ -138,14 +139,15 @@ class Slim:
 	def look_around_for(self, target):
 		while not self.reached_destination:
 			pass
+		print('robot has reached destination. Now going to look around')
 		r = self.view_radius
 		views = []
 
 		#fit gmm on particles
 		gx = GMM(n_components=3)
-		gx.fit(self.xs)
+		gx.fit(self.xs.reshape(-1,1))
 		gy = GMM(n_components=3)
-		gy.fit(self.ys)
+		gy.fit(self.ys.reshape(-1,1))
 
 		#choose particle with greatest weight
 		mean_x = gx.means_[0]
@@ -161,12 +163,17 @@ class Slim:
 		ranked_views = []
 		for idx, view in enumerate(views):
 			v = (idx*36*pi)/180
-			score = 1 - v *(([mean_x,mean_y] - view) / np.linalg.norm((mean_x,mean_y)-view))
-			ranked_views.append((idx, np.linalg.norm(score)))
+			score = 1 - v *np.linalg.norm(np.subtract([mean_x,mean_y] , view) / np.linalg.norm(np.subtract([mean_x,mean_y],view)))
+			ranked_views.append((idx, score))
 
 		ranked_views.sort(key=lambda x: x[1])
 		selected_view = views[ranked_views[0][0]]
-
+		pose = Pose()
+		pose.position.x = selected_view[0]
+		pose.position.y = selected_view[1]
+		pose.orientation.z = 1
+		self.gotoposepub.publish(pose)
+		print('going to view position {}, {}'.format(selected_view[0], selected_view[1]))
 		#send robot to selected_view[0,1]
 
 
