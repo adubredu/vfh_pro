@@ -106,8 +106,8 @@ class Perception:
 
 
 
-        self.seen_tolerance = 0.5
-        self.orient_tolerance = 0.4
+        self.seen_tolerance = 2.5
+        self.orient_tolerance = 0.8
         rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, self.odometry_handler)
         self.publish_seen_objects()
         rospy.spin()

@@ -8,6 +8,7 @@ from move_base_msgs.msg import MoveBaseActionResult
 from math import pi, sin, cos
 from sklearn.mixture import GaussianMixture as GMM 
 import time
+import tf
 
 class Slim:
 	def __init__(self):
@@ -51,6 +52,7 @@ class Slim:
 		rospy.Subscriber('/seeing_what', String, self.perception_handler)
 
 
+
 		# while not rospy.is_shutdown():
 		for i in range(5):
 			self.uniform_sample()
@@ -73,6 +75,14 @@ class Slim:
 
 	def perception_handler(self, data):
 		self.seeing = data.data
+
+
+	def found(self, target):
+		if target == self.seeing:
+			print('found the target: {}'.format(target))
+			return True
+		else:
+			return False
 
 
 	def uniform_sample(self):
@@ -98,7 +108,8 @@ class Slim:
 		choice = self.importance_sample(probabilities)
 		self.resample(choice)
 		self.send_robot_to(choice)
-		self.look_around_for(target)
+		# self.look_around_for(target)
+		self.search_around(target)
 
 
 	def importance_sample(self, prob_dict):
@@ -135,11 +146,51 @@ class Slim:
 		time.sleep(1)
 
 
+	def search_around(self, target):
+		while not self.reached_destination:
+			pass
+		self.reached_destination = False
+
+		while not self.found(target):
+			print('turning around')
+			quad = self.robot_pose.orientation
+			quaternion = (quad.x,quad.y,quad.z,quad.w)
+			euler = tf.transformations.euler_from_quaternion(quaternion)
+			roll = euler[0]; pitch = euler[1]; yaw = euler[2]
+			yaw+=1.57
+			quaternion = tf.transformations.quaternion_from_euler(roll, pitch, yaw)
+			pose = self.robot_pose
+			pose.orientation.x = quaternion[0]
+			pose.orientation.y = quaternion[1]
+			pose.orientation.z = quaternion[2]
+			pose.orientation.w = quaternion[3]
+			self.gotoposepub.publish(pose)
+			time.sleep(15)
+
+			while not self.reached_destination:
+				pass
+			self.reached_destination = False
+
+			if not self.found(target):
+				print('going to new place')
+				probabilities = self.commonsense[target]
+				choice = self.importance_sample(probabilities)
+				self.resample(choice)
+				self.send_robot_to(choice)
+
+				while not self.reached_destination:
+					pass
+
+
+
+
+			
 
 	def look_around_for(self, target):
 		while not self.reached_destination:
 			pass
 		print('robot has reached destination. Now going to look around')
+		self.reached_destination=False
 		r = self.view_radius
 		views = []
 
