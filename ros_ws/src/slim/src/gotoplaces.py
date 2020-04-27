@@ -66,6 +66,15 @@ class GoToPlace:
 		self.kitchen_coords.orientation.z= 0.00265381718347
 		self.kitchen_coords.orientation.w= 0.999996478621
 
+		self.lab_table_coords = Pose()
+		self.lab_table_coords.position.x=-6.8587046
+		self.lab_table_coords.position.y=-2.72935
+		self.lab_table_coords.position.z=0.0
+		self.lab_table_coords.orientation.x=0.0
+		self.lab_table_coords.orientation.y=0.0
+		self.lab_table_coords.orientation.z=-0.9917877
+		self.lab_table_coords.orientation.w=0.12789477
+
 		rospy.Subscriber('/go_to', String, self.command_handler)
 		rospy.Subscriber('/go_to_pose', Pose, self.pose_command_handler)
 		rospy.spin()
@@ -85,6 +94,8 @@ class GoToPlace:
 			pose = self.kitchen_coords
 		elif place.data == 'gym':
 			pose = self.gym_coords
+		elif place.data == 'labtable':
+			pose = self.lab_table_coords
 
 		if pose is not None:
 			self.gotoplace(pose)

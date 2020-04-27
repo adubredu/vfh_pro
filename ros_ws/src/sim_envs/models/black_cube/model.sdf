@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <sdf version='1.4'>
-  <model name="brown_cube">      
+  <model name="black_cube">      
       <static>0</static>
       <link name='link'>
         <inertial>
@@ -46,7 +46,7 @@
           <material>
             <script>
               <uri>file://media/materials/scripts/gazebo.material</uri>
-              <name>Gazebo/Orange</name>
+              <name>Gazebo/Black</name>
             </script>
           </material>
         </visual>
